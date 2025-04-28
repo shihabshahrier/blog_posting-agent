@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Trends to WordPress</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .btn-primary {
+            background-color: #3182ce;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .btn-primary:hover {
+            background-color: #2c5282;
+        }
+
+        .btn-secondary {
+            background-color: #718096;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .btn-secondary:hover {
+            background-color: #4a5568;
+        }
+
+        .tab-button {
+            padding: 10px 15px;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tab-button.active {
+            background-color: white;
+            font-weight: bold;
+            box-shadow: 0 -4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        .status-indicator.connected {
+            background-color: #48bb78;
+        }
+
+        .status-indicator.disconnected {
+            background-color: #e53e3e;
+        }
+
+        .steps {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .step-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 20%;
+        }
+
+        .step-number {
+            width: 30px;
+            height: 30px;
+            background-color: #cbd5e0;
+            color: #4a5568;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .step-item.active .step-number {
+            background-color: #3182ce;
+            color: white;
+        }
+
+        .step-item.completed .step-number {
+            background-color: #48bb78;
+            color: white;
+        }
+
+        .step-title {
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .step-line {
+            flex-grow: 1;
+            height: 2px;
+            background-color: #cbd5e0;
+            margin: 15px 10px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3182ce;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 10px auto;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .preview-box {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-bold mb-2 text-gray-800">Google Trends to WordPress</h1>
+            <p class="text-gray-600">Generate SEO-optimized WordPress content from Google Trends</p>
+        </header>
+
+        <div class="steps">
+            <div class="step-item active" id="step-1">
+                <div class="step-number">1</div>
+                <div class="step-title">Configure</div>
+            </div>
+            <div class="step-line"></div>
+            <div class="step-item" id="step-2">
+                <div class="step-number">2</div>
+                <div class="step-title">Upload Trends</div>
+            </div>
+            <div class="step-line"></div>
+            <div class="step-item" id="step-3">
+                <div class="step-number">3</div>
+                <div class="step-title">Generate</div>
+            </div>
+            <div class="step-line"></div>
+            <div class="step-item" id="step-4">
+                <div class="step-number">4</div>
+                <div class="step-title">Publish</div>
+            </div>
+            <div class="step-line"></div>
+            <div class="step-item" id="step-5">
+                <div class="step-number">5</div>
+                <div class="step-title">Results</div>
+            </div>
+        </div>
+
+        <!-- Step 1: Configure API Keys & WordPress -->
+        <div class="card" id="config-section">
+            <h2 class="text-xl font-semibold mb-4">API Configuration</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Nebius API Configuration -->
+                <div class="border p-4 rounded">
+                    <h3 class="text-lg font-medium mb-2">Nebius API</h3>
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+                        <div class="flex">
+                            <input type="password" id="nebius-api-key"
+                                class="flex-grow rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                placeholder="Enter Nebius API Key">
+                            <button id="test-nebius-btn"
+                                class="ml-2 px-3 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">Test</button>
+                        </div>
+                    </div>
+                    <div id="nebius-status" class="text-sm">
+                        <span class="status-indicator disconnected"></span> Not Connected
+                    </div>
+                </div>
+
+                <!-- WordPress Configuration -->
+                <div class="border p-4 rounded">
+                    <h3 class="text-lg font-medium mb-2">WordPress API</h3>
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">WordPress URL</label>
+                        <input type="url" id="wp-url"
+                            class="w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                            placeholder="https://yourblog.com">
+                    </div>
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                        <input type="text" id="wp-username"
+                            class="w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                            placeholder="WordPress Username">
+                    </div>
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Application Password</label>
+                        <div class="flex">
+                            <input type="password" id="wp-app-password"
+                                class="flex-grow rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                placeholder="Application Password">
+                            <button id="test-wp-btn"
+                                class="ml-2 px-3 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">Test</button>
+                        </div>
+                    </div>
+                    <div id="wp-status" class="text-sm">
+                        <span class="status-indicator disconnected"></span> Not Connected
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4 text-right">
+                <button id="step1-next" class="btn-primary">Next <i class="fas fa-arrow-right ml-1"></i></button>
+            </div>
+        </div>
+
+        <!-- Step 2: Upload Google Trends -->
+        <div class="card hidden" id="upload-section">
+            <h2 class="text-xl font-semibold mb-4">Upload Google Trends Screenshot</h2>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Upload Trends Screenshot</label>
+                <div class="flex items-center justify-center w-full">
+                    <label
+                        class="flex flex-col w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
+                        <div class="flex flex-col items-center justify-center pt-7">
+                            <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                            <p class="text-sm text-gray-500" id="file-label">Drag & drop image here or click to browse
+                            </p>
+                        </div>
+                        <input type="file" id="trends-image" class="hidden" accept="image/png, image/jpeg, image/jpg">
+                    </label>
+                </div>
+                <div class="mt-4 hidden" id="image-preview-container">
+                    <p class="text-sm font-medium text-gray-700 mb-2">Image Preview:</p>
+                    <img id="image-preview" class="max-h-60 rounded border" src="" alt="Preview">
+                </div>
+            </div>
+
+            <div id="analyze-section" class="hidden">
+                <button id="analyze-btn" class="btn-primary">Analyze Trends <i class="fas fa-search ml-1"></i></button>
+                <div id="analyze-loader" class="loader hidden mt-4"></div>
+                <div id="analyze-results" class="mt-4 hidden">
+                    <h3 class="text-lg font-medium mb-2">Extracted Trends</h3>
+                    <div id="trends-list" class="bg-gray-50 p-3 rounded"></div>
+                </div>
+            </div>
+
+            <div class="mt-4 flex justify-between">
+                <button id="step2-prev" class="btn-secondary"><i class="fas fa-arrow-left mr-1"></i> Back</button>
+                <button id="step2-next" class="btn-primary hidden">Next <i class="fas fa-arrow-right ml-1"></i></button>
+            </div>
+        </div>
+
+        <!-- Step 3: Generate Content -->
+        <div class="card hidden" id="generate-section">
+            <h2 class="text-xl font-semibold mb-4">Generate SEO Content</h2>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Main Topic</label>
+                <input type="text" id="main-topic"
+                    class="w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                    placeholder="Main topic for blog post">
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Keywords (comma separated)</label>
+                <input type="text" id="keywords"
+                    class="w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                    placeholder="keyword1, keyword2, keyword3">
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Content Tone</label>
+                    <select id="tone"
+                        class="w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                        <option value="informative">Informative</option>
+                        <option value="conversational">Conversational</option>
+                        <option value="professional">Professional</option>
+                        <option value="authoritative">Authoritative</option>
+                        <option value="friendly">Friendly</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Post Type</label>
+                    <select id="post-type"
+                        class="w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                        <option value="article">Article</option>
+                        <option value="how-to">How-to Guide</option>
+                        <option value="listicle">Listicle</option>
+                        <option value="review">Review</option>
+                        <option value="opinion">Opinion/Editorial</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Word Count</label>
+                    <select id="word-count"
+                        class="w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                        <option value="500">Short (~500 words)</option>
+                        <option value="800" selected>Medium (~800 words)</option>
+                        <option value="1200">Long (~1200 words)</option>
+                        <option value="1800">In-depth (~1800 words)</option>
+                    </select>
+                </div>
+            </div>
+
+            <button id="generate-btn" class="btn-primary">Generate Content <i
+                    class="fas fa-pen-fancy ml-1"></i></button>
+            <div id="generate-loader" class="loader hidden mt-4"></div>
+
+            <div id="content-preview" class="mt-4 hidden">
+                <h3 class="text-lg font-medium mb-2">Generated Content Preview</h3>
+                <div class="border p-4 rounded bg-gray-50">
+                    <h4 class="text-md font-medium">Title:</h4>
+                    <p id="preview-title" class="mb-3"></p>
+
+                    <h4 class="text-md font-medium">Excerpt:</h4>
+                    <p id="preview-excerpt" class="mb-3"></p>
+
+                    <h4 class="text-md font-medium">Content Preview:</h4>
+                    <div class="preview-box">
+                        <div id="preview-content"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4 flex justify-between">
+                <button id="step3-prev" class="btn-secondary"><i class="fas fa-arrow-left mr-1"></i> Back</button>
+                <button id="step3-next" class="btn-primary hidden">Next <i class="fas fa-arrow-right ml-1"></i></button>
+            </div>
+        </div>
+
+        <!-- Step 4: Publish to WordPress -->
+        <div class="card hidden" id="publish-section">
+            <h2 class="text-xl font-semibold mb-4">Publish to WordPress</h2>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Post Status</label>
+                <select id="post-status"
+                    class="w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                    <option value="draft" selected>Draft</option>
+                    <option value="publish">Publish</option>
+                    <option value="pending">Pending Review</option>
+                </select>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Categories (IDs, comma
+                        separated)</label>
+                    <input type="text" id="categories"
+                        class="w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                        placeholder="1, 4, 7">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tags (IDs, comma separated)</label>
+                    <input type="text" id="tags"
+                        class="w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                        placeholder="2, 8, 12">
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Featured Image (Optional)</label>
+                <div class="flex items-center justify-center w-full">
+                    <label
+                        class="flex flex-col w-full h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
+                        <div class="flex flex-col items-center justify-center pt-5">
+                            <i class="fas fa-image text-2xl text-gray-400"></i>
+                            <p class="text-sm text-gray-500">Click to upload featured image</p>
+                        </div>
+                        <input type="file" id="feature-image" class="hidden" accept="image/png, image/jpeg, image/jpg">
+                    </label>
+                </div>
+                <div id="feature-image-name" class="text-sm mt-1 hidden"></div>
+            </div>
+
+            <button id="publish-btn" class="btn-primary">Publish to WordPress <i
+                    class="fas fa-upload ml-1"></i></button>
+            <div id="publish-loader" class="loader hidden mt-4"></div>
+
+            <div class="mt-4 flex justify-between">
+                <button id="step4-prev" class="btn-secondary"><i class="fas fa-arrow-left mr-1"></i> Back</button>
+                <button id="step4-next" class="btn-primary hidden">Next <i class="fas fa-arrow-right ml-1"></i></button>
+            </div>
+        </div>
+
+        <!-- Step 5: Results -->
+        <div class="card hidden" id="results-section">
+            <h2 class="text-xl font-semibold mb-4">Post Published!</h2>
+
+            <div id="success-message" class="bg-green-50 border border-green-200 text-green-700 p-4 rounded mb-4">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-check-circle text-green-600"></i>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-lg font-medium">Success!</p>
+                        <p>Your blog post has been successfully published to WordPress.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <h3 class="text-lg font-medium mb-2">Post Details</h3>
+                <div class="border p-4 rounded bg-gray-50">
+                    <p class="mb-2"><strong>Title:</strong> <span id="result-title"></span></p>
+                    <p class="mb-2"><strong>Status:</strong> <span id="result-status"></span></p>
+                    <p class="mb-2"><strong>Post ID:</strong> <span id="result-id"></span></p>
+                    <p><strong>Link:</strong> <a id="result-link" href="#" target="_blank"
+                            class="text-blue-600 hover:underline"></a></p>
+                </div>
+            </div>
+
+            <div class="flex justify-between">
+                <button id="restart-btn" class="btn-secondary"><i class="fas fa-redo mr-1"></i> Start Over</button>
+                <a id="view-post-btn" href="#" target="_blank" class="btn-primary">View Post <i
+                        class="fas fa-external-link-alt ml-1"></i></a>
+            </div>
+        </div>
+
+        <!-- Messages/Alerts Section -->
+        <div id="alert-container" class="mt-4 hidden">
+            <div id="alert" class="p-4 rounded"></div>
+        </div>
+    </div>
+
+    <footer class="text-center py-4 text-gray-500 text-sm">
+        <p>Google Trends to WordPress Tool &copy; 2025</p>
+    </footer>
+
+    <script src="/static/index.js"></script>
+</body>
+
+</html>
